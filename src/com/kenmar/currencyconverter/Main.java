@@ -1,7 +1,10 @@
+
 package com.kenmar.currencyconverter;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import config.ConfigLoader;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -18,7 +21,13 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         List<String> historial = new ArrayList<>();
 
-        // Menú interactivo
+        // Cargar la API key desde config.properties
+        String apiKey = ConfigLoader.getApiKey();
+        if (apiKey == null) {
+            System.out.println("⚠️ No se pudo cargar la API Key. Finalizando programa.");
+            return;
+        }
+
         while (true) {
             System.out.println("*********************************************************************************");
             System.out.println("Sea bienvenido/a al Conversor de Moneda =]");
@@ -28,9 +37,9 @@ public class Main {
             System.out.println("4) Real brasileño =>> Dólar");
             System.out.println("5) Dólar =>> Peso colombiano");
             System.out.println("6) Peso colombiano =>> Dólar");
-            System.out.println("7) Ver historial de conversiones");
-            System.out.println("8) Salir");
-            System.out.println("9) Convertir entre otras monedas");
+            System.out.println("7) Convertir entre otras monedas");
+            System.out.println("8) Ver historial de conversiones");
+            System.out.println("9) Salir");
             System.out.println("*********************************************************************************");
             System.out.print("Elija una opción válida: ");
 
@@ -41,66 +50,31 @@ public class Main {
                 continue;
             }
 
-            if (opcion == 8) {
+            if (opcion == 9) {
                 System.out.println("¡Hasta luego!");
                 break;
             }
 
-            // Pedir al usuario el valor que desea convertir
-            if (opcion != 7 && opcion != 9) {
+            if (opcion == 7) {
+                System.out.print("Ingrese la moneda base (por ejemplo, USD, EUR): ");
+                String baseMoneda = scanner.next();
+                System.out.print("Ingrese la moneda objetivo (por ejemplo, ARS, COP): ");
+                String simboloMoneda = scanner.next();
                 System.out.print("Ingrese el valor que desea convertir: ");
                 double valor = scanner.nextDouble();
 
-                String baseMoneda = "";
-                String simboloMoneda = "";
+                double tasaCambio = obtenerTasaDeCambio(baseMoneda, simboloMoneda, apiKey);
 
-                double tasaCambio = 0;
-
-                switch (opcion) {
-                    case 1:
-                        baseMoneda = "USD";
-                        simboloMoneda = "ARS";
-                        break;
-                    case 2:
-                        baseMoneda = "ARS";
-                        simboloMoneda = "USD";
-                        break;
-                    case 3:
-                        baseMoneda = "USD";
-                        simboloMoneda = "BRL";
-                        break;
-                    case 4:
-                        baseMoneda = "BRL";
-                        simboloMoneda = "USD";
-                        break;
-                    case 5:
-                        baseMoneda = "USD";
-                        simboloMoneda = "COP";
-                        break;
-                    case 6:
-                        baseMoneda = "COP";
-                        simboloMoneda = "USD";
-                        break;
-                }
-
-                if (!baseMoneda.isEmpty() && !simboloMoneda.isEmpty()) {
-                    tasaCambio = obtenerTasaDeCambio(baseMoneda, simboloMoneda);
-                }
-
-                // Realizar la conversión
                 if (tasaCambio > 0) {
                     double resultado = valor * tasaCambio;
                     String resultadoMensaje = valor + " " + baseMoneda + " = " + resultado + " " + simboloMoneda;
-
-                    // Guardar en historial
                     historial.add(generarRegistroConMarcaDeTiempo(baseMoneda, simboloMoneda, valor, resultado));
-
                     System.out.println("Resultado: " + resultadoMensaje);
                 } else {
-                    System.out.println("Error en la conversión. No se pudo obtener la tasa de cambio.");
+                    System.out.println("Error en la conversión.");
                 }
-            } else if (opcion == 7) {
-                // Mostrar historial
+
+            } else if (opcion == 8) {
                 if (historial.isEmpty()) {
                     System.out.println("No hay historial de conversiones.");
                 } else {
@@ -109,28 +83,50 @@ public class Main {
                         System.out.println(entry);
                     }
                 }
-            } else if (opcion == 9) {
-                // Convertir entre otras monedas
-                System.out.print("Ingrese la moneda base (por ejemplo, USD, EUR, etc.): ");
-                String baseMoneda = scanner.next();
-                System.out.print("Ingrese la moneda objetivo (por ejemplo, ARS, COP, etc.): ");
-                String simboloMoneda = scanner.next();
 
+            } else {
                 System.out.print("Ingrese el valor que desea convertir: ");
                 double valor = scanner.nextDouble();
 
-                double tasaCambio = obtenerTasaDeCambio(baseMoneda, simboloMoneda);
+                String baseMoneda = "";
+                String simboloMoneda = "";
+
+                switch (opcion) {
+                    case 1 -> {
+                        baseMoneda = "USD";
+                        simboloMoneda = "ARS";
+                    }
+                    case 2 -> {
+                        baseMoneda = "ARS";
+                        simboloMoneda = "USD";
+                    }
+                    case 3 -> {
+                        baseMoneda = "USD";
+                        simboloMoneda = "BRL";
+                    }
+                    case 4 -> {
+                        baseMoneda = "BRL";
+                        simboloMoneda = "USD";
+                    }
+                    case 5 -> {
+                        baseMoneda = "USD";
+                        simboloMoneda = "COP";
+                    }
+                    case 6 -> {
+                        baseMoneda = "COP";
+                        simboloMoneda = "USD";
+                    }
+                }
+
+                double tasaCambio = obtenerTasaDeCambio(baseMoneda, simboloMoneda, apiKey);
 
                 if (tasaCambio > 0) {
                     double resultado = valor * tasaCambio;
                     String resultadoMensaje = valor + " " + baseMoneda + " = " + resultado + " " + simboloMoneda;
-
-                    // Guardar en historial
                     historial.add(generarRegistroConMarcaDeTiempo(baseMoneda, simboloMoneda, valor, resultado));
-
                     System.out.println("Resultado: " + resultadoMensaje);
                 } else {
-                    System.out.println("Error en la conversión. No se pudo obtener la tasa de cambio.");
+                    System.out.println("Error en la conversión.");
                 }
             }
         }
@@ -138,10 +134,9 @@ public class Main {
         scanner.close();
     }
 
-    // Método para obtener la tasa de cambio real desde la API
-    private static double obtenerTasaDeCambio(String base, String simbolo) {
+    private static double obtenerTasaDeCambio(String base, String simbolo, String apiKey) {
         try {
-            String url = "https://v6.exchangerate-api.com/v6/e491c86faa47117753f1ff18/latest/" + base;
+            String url = "https://v6.exchangerate-api.com/v6/" + apiKey + "/latest/" + base;
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .build();
@@ -155,23 +150,19 @@ public class Main {
                     return jsonObject.getAsJsonObject("conversion_rates").get(simbolo).getAsDouble();
                 } else {
                     System.out.println("No se encontró la tasa de cambio para " + simbolo);
-                    return 0;
                 }
             } else {
-                System.out.println("Error al obtener datos de la API");
-                return 0;
+                System.out.println("Error al obtener datos de la API.");
             }
         } catch (Exception e) {
             System.out.println("Error de conexión con la API: " + e.getMessage());
-            return 0;
         }
+        return 0;
     }
 
-    // Generar registro con marca de tiempo
     private static String generarRegistroConMarcaDeTiempo(String baseMoneda, String simboloMoneda, double valor, double resultado) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String fechaHora = LocalDateTime.now().format(formatter);
         return "[" + fechaHora + "] " + valor + " " + baseMoneda + " = " + resultado + " " + simboloMoneda;
     }
 }
-
